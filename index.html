@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Air Draw — Draw in the Air with Hand Gestures</title>
+  <meta name="description" content="Air Draw lets you draw in the air using your webcam and hand gestures. Point to draw, open palm to erase, pinch to move. Powered by MediaPipe hand tracking." />
+  <link rel="icon" href="/logo.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════════════════
+       Top Navigation Bar
+  ════════════════════════════════════════════════════════ -->
+  <nav id="top-nav" class="top-nav hidden">
+    <div class="nav-brand">
+      <img src="/logo.svg" class="nav-logo" alt="" />
+      <span class="nav-brand-name">Air Studio</span>
+    </div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" data-tab="draw">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 14 L5 11 L13 3 Q15 1 14 2.5 L6 10.5 Z" fill="currentColor" stroke="none" opacity="0.8"/><path d="M11 2 L14 5"/></svg>
+        <span>Air Draw</span>
+      </button>
+      <button class="nav-tab" data-tab="fx">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="8" cy="8" r="2" fill="currentColor" stroke="none" opacity="0.8"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.1 3.1l1.4 1.4M11.5 11.5l1.4 1.4M3.1 12.9l1.4-1.4M11.5 4.5l1.4-1.4"/></svg>
+        <span>Air FX</span>
+      </button>
+    </div>
+    <div class="nav-spacer"></div>
+  </nav>
+
+  <!-- Instructions Modal (Also serves as loading screen) -->
+  <div id="modal">
+    <div class="modal-scrim"></div>
+    <div class="modal-card">
+      <img src="/logo.svg" class="modal-logo" alt="" />
+      <h2 class="modal-title">How to Play</h2>
+      <ul class="instr-list">
+        <li class="instr-item">
+          <span class="instr-icon">☝️</span>
+          <div><strong>Draw</strong><span>Point any single finger to draw</span></div>
+        </li>
+        <li class="instr-item">
+          <span class="instr-icon">✋</span>
+          <div><strong>Erase</strong><span>Open palm (all 5 fingers) to erase</span></div>
+        </li>
+        <li class="instr-item">
+          <span class="instr-icon">🤏</span>
+          <div><strong>Move / Grab</strong><span>L-Shape (Thumb OUT + Index UP) or Pinch</span></div>
+        </li>
+        <li class="instr-item">
+          <span class="instr-icon">✊</span>
+          <div><strong>Idle</strong><span>Fist to pause drawing</span></div>
+        </li>
+      </ul>
+      <h2 class="modal-title" style="font-size:0.9rem; margin-top:4px">Left Hand Controls</h2>
+      <ul class="instr-list">
+        <li class="instr-item">
+          <span class="instr-icon">🖐</span>
+          <div><strong>Undo</strong><span>Open left palm</span></div>
+        </li>
+        <li class="instr-item">
+          <span class="instr-icon">☝️</span>
+          <div><strong>Next Color</strong><span>Left index finger</span></div>
+        </li>
+        <li class="instr-item">
+          <span class="instr-icon">✌️</span>
+          <div><strong>Next Brush</strong><span>Left peace sign</span></div>
+        </li>
+        <li class="instr-item">
+          <span class="instr-icon">🤏</span>
+          <div><strong>Grid</strong><span>Left pinch</span></div>
+        </li>
+      </ul>
+
+      <div id="loader-area" style="display:flex; flex-direction:column; align-items:center; gap:8px; width:100%; margin-top:8px;">
+        <p class="loader-status" id="loader-status">Initializing...</p>
+        <div class="loader-bar-bg" style="width:100%">
+          <div class="loader-bar" id="loader-bar"></div>
+        </div>
+      </div>
+
+      <button id="modal-btn" class="modal-btn dim" disabled>Loading...</button>
+    </div>
+  </div>
+
+  <!-- App -->
+  <div id="app" class="hidden">
+
+    <!-- Camera status pill -->
+    <button id="cam-pill" class="cam-pill">
+      <span class="cam-dot"></span>
+      <span id="cam-label">Camera ON</span>
+    </button>
+
+    <!-- Multi-hand warning banner -->
+    <div id="hand-warning" class="hand-warning hidden">
+      <div class="hand-warning-icon">⚠️</div>
+      <div class="hand-warning-text">
+        <strong>Too many hands detected!</strong>
+        <span>Drawing paused — only 2 hands allowed at a time</span>
+      </div>
+    </div>
+
+    <!-- FPS badge (toggle with F key) -->
+    <div id="fps-badge" class="fps-badge hidden">-- fps</div>
+
+    <!-- Canvas layers -->
+    <canvas id="camera-canvas"></canvas>
+    <canvas id="drawing-canvas"></canvas>
+    <canvas id="ui-canvas"></canvas>
+
+    <!-- Toolbar -->
+    <aside class="toolbar">
+
+      <div class="tb-sec">
+        <span class="tb-label">COLORS</span>
+        <div class="swatches" id="swatches"></div>
+      </div>
+
+      <div class="tb-rule"></div>
+
+      <div class="tb-sec">
+        <span class="tb-label">BRUSH</span>
+        <div class="brush-row" id="brush-row">
+          <button class="br-btn active" data-brush="normal" title="Normal">
+            <svg viewBox="0 0 14 14" fill="none"><path d="M2 11 Q5 6 7 5 Q9 4 12 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </button>
+          <button class="br-btn" data-brush="neon" title="Neon">
+            <svg viewBox="0 0 14 14" fill="none">
+              <path d="M2 11 Q5 6 7 5 Q9 4 12 2" stroke="currentColor" stroke-width="3" stroke-linecap="round" opacity="0.25"/>
+              <path d="M2 11 Q5 6 7 5 Q9 4 12 2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <button class="br-btn" data-brush="calligraphy" title="Calligraphy">
+            <svg viewBox="0 0 14 14" fill="none"><path d="M2 12 L7 2 L12 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><line x1="4" y1="9" x2="10" y2="9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+          </button>
+          <button class="br-btn" data-brush="spray" title="Spray">
+            <svg viewBox="0 0 14 14" fill="none">
+              <circle cx="3" cy="10" r="1" fill="currentColor" opacity="0.5"/>
+              <circle cx="6" cy="7" r="1" fill="currentColor" opacity="0.75"/>
+              <circle cx="9" cy="5" r="1.2" fill="currentColor"/>
+              <circle cx="11" cy="3" r="0.8" fill="currentColor" opacity="0.65"/>
+              <circle cx="5" cy="11" r="0.7" fill="currentColor" opacity="0.4"/>
+            </svg>
+          </button>
+          <button class="br-btn" data-brush="glitter" title="Glitter">
+            <svg viewBox="0 0 14 14" fill="none">
+              <path d="M7 1v3M7 10v3M1 7h3M10 7h3M3 3l2 2M9 9l2 2M3 11l2-2M9 5l2-2" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <button class="br-btn" data-brush="gradient" title="Gradient">
+            <svg viewBox="0 0 14 14" fill="none">
+              <defs>
+                <linearGradient id="gradIcon" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="currentColor"/>
+                  <stop offset="100%" stop-color="transparent"/>
+                </linearGradient>
+              </defs>
+              <path d="M2 11 Q5 6 7 5 Q9 4 12 2" stroke="url(#gradIcon)" stroke-width="2.5" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="tb-rule"></div>
+
+      <div class="tb-sec">
+        <div class="sl-group">
+          <span class="tb-label">THICKNESS</span>
+          <div class="sl-track">
+            <input type="range" id="thickness" min="2" max="24" value="6" class="sl" />
+          </div>
+          <span class="sl-val" id="thickness-val">6px</span>
+        </div>
+        <div class="sl-group">
+          <span class="tb-label">GLOW</span>
+          <div class="sl-track">
+            <input type="range" id="glow" min="0" max="100" value="60" class="sl" />
+          </div>
+          <span class="sl-val" id="glow-val">60%</span>
+        </div>
+      </div>
+
+      <div class="tb-rule"></div>
+
+      <div class="tb-sec">
+        <span class="tb-label">CANVAS</span>
+        <div class="opt-row">
+          <button id="grid-btn" class="opt-btn" title="Grid  [G]" data-on="false">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="1" y="1" width="12" height="12" rx="1"/><path d="M1 5h12M1 9h12M5 1v12M9 1v12" opacity="0.5"/></svg>
+          </button>
+          <button id="sym-btn" class="opt-btn" title="Mirror  [M]" data-on="false">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2"><line x1="7" y1="1" x2="7" y2="13" stroke-linecap="round"/><path d="M3 4l4 3-4 3" stroke-linecap="round" stroke-linejoin="round"/><path d="M11 4l-4 3 4 3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="tb-rule"></div>
+
+      <div class="tb-actions">
+        <button id="undo-btn" class="tb-btn" title="Undo  [Z]">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2.5 7h7a3.5 3.5 0 0 1 0 7H2.5"/>
+            <path d="M2.5 4L0 7l2.5 3"/>
+          </svg>
+        </button>
+        <button id="redo-btn" class="tb-btn" title="Redo  [Y]">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M13.5 7h-7a3.5 3.5 0 0 0 0 7h7"/>
+            <path d="M13.5 4L16 7l-2.5 3"/>
+          </svg>
+        </button>
+        <button id="clear-btn" class="tb-btn" title="Clear  [X]">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 5h12M5 5V3h6v2M12 5l-.8 9a1 1 0 0 1-1 .9H5.8a1 1 0 0 1-1-.9L4 5"/>
+            <path d="M7 8v4M9 8v4"/>
+          </svg>
+        </button>
+        <button id="camera-btn" class="tb-btn" title="Camera  [C]">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 6l4 2.5L11 11V6z"/>
+            <rect x="1" y="4" width="10" height="8" rx="1.5"/>
+          </svg>
+        </button>
+        <button id="save-btn" class="tb-btn" title="Save PNG [⌘S] · Shift+click for transparent">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M13 10v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-3"/>
+            <path d="M8 10V2M5 7l3 3 3-3"/>
+          </svg>
+        </button>
+        <button id="help-btn" class="tb-btn" title="Instructions  [H]">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="8" cy="8" r="6"/>
+            <path d="M8 5v0a1.5 1.5 0 0 1 1 1.5v0c0 1-1 1.5-1 2.5v1M8 12h.01"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="tb-rule"></div>
+
+      <button id="tb-collapse" class="tb-btn" title="Hide toolbar  [T]" style="width:100%">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10 4l4 4-4 4"/><path d="M2 8h11"/>
+        </svg>
+      </button>
+
+    </aside>
+
+    <!-- Floating expand button shown when toolbar is collapsed -->
+    <button id="tb-expand" class="tb-expand-btn hidden" title="Show toolbar  [T]">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 4l-4 4 4 4"/><path d="M14 8H3"/>
+      </svg>
+    </button>
+
+    <!-- Gesture HUD -->
+    <div id="hud" class="hud">
+      <span id="hud-emoji">👋</span>
+      <span id="hud-text">Show hand</span>
+    </div>
+
+    <video id="video" playsinline autoplay muted hidden></video>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       Air FX Section
+  ════════════════════════════════════════════════════════ -->
+  <div id="fx-section" class="hidden fx-section">
+    <canvas id="fx-cam"    class="fx-cv"></canvas>
+    <canvas id="fx-canvas" class="fx-cv"></canvas>
+
+    <!-- Hand detection status indicator (top-right) -->
+    <div id="fx-status-dot" class="fx-hud fx-dot fx-dot--none" aria-hidden="true">
+      <span class="fx-dot__circle"></span>
+      <span class="fx-dot__label">No Hands</span>
+    </div>
+
+    <!-- User guidance message (bottom-center) -->
+    <div id="fx-guide" class="fx-hud fx-guide" aria-live="polite">
+      <span id="fx-guide-text">Show both hands to start</span>
+    </div>
+
+    <!-- Activation pulse overlay (flashes once on connect) -->
+    <div id="fx-pulse" class="fx-pulse"></div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
