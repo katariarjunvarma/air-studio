@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite'
 
 export default defineConfig({
-  // Set base to '/air-studio/' for GitHub Pages deployment.
-  base: '/air-studio/',
+  // base: '/air-studio/',  ← uncomment this only for GitHub Pages
+  // Vercel deploys at root '/' so no base needed
 })
