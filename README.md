@@ -6,11 +6,6 @@
 
 **Draw in the air with your hands. No touch required.**
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-fxairstudio.vercel.app-00d4ff?style=flat-square&logo=vercel&logoColor=white)](https://fxairstudio.vercel.app)
-[![Built with Vite](https://img.shields.io/badge/Built%20with-Vite-646cff?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev)
-[![MediaPipe](https://img.shields.io/badge/Powered%20by-MediaPipe-ff6d00?style=flat-square)](https://developers.google.com/mediapipe)
-[![License](https://img.shields.io/badge/License-MIT-white?style=flat-square)](LICENSE)
-
 [**→ Try it live**](https://fxairstudio.vercel.app)
 
 </div>
