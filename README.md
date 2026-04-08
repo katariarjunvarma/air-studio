@@ -72,30 +72,7 @@ No installation. No plugins. Just a browser and a camera.
 | Build tool | Vite 5 |
 | Deployment | Vercel |
 
----
 
-## Getting Started
-
-```bash
-# Clone
-git clone https://github.com/katariarjunvarma/air-studio.git
-cd air-studio
-
-# Install
-npm install
-
-# Run dev server
-npm run dev
-```
-
-Open `http://localhost:5173` — allow camera access when prompted.
-
-```bash
-# Production build
-npm run build
-```
-
----
 
 ## How It Works
 
@@ -104,24 +81,6 @@ npm run build
 3. A **gesture classifier** reads joint angles across all 4 fingers, applying a strict priority pipeline: `ERASE > MOVE > DRAW`
 4. A **mode lock** (350ms) prevents accidental gesture switching mid-stroke
 5. Draw strokes are collected as sparse control points → interpolated through a **Catmull-Rom spline** → rendered as variable-width filled ribbons with glow layers
-
----
-
-## Project Structure
-
-```
-air-studio/
-├── index.html          # App shell + UI markup
-├── public/
-│   └── logo.svg
-├── src/
-│   ├── main.js         # Core app — hand tracking, gesture engine, rendering
-│   ├── effects.js      # Air FX — dual-hand particle effects
-│   └── style.css       # Glass UI design system
-└── vite.config.js
-```
-
----
 
 ## Browser Support
 
@@ -138,7 +97,6 @@ Tested on Chrome 120+, Safari 17+, Edge 120+. Firefox works but may have lower p
 
 <div align="center">
 
-Made with ☕ and too many hand gestures
 
 [fxairstudio.vercel.app](https://fxairstudio.vercel.app)
 
